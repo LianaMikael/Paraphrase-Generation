@@ -77,8 +77,8 @@ def main(data_path):
     with open(data_path, 'r+') as f:
         for line in f:
             line = line.split(',')
-            source_tokens = tokenizer.tokenize(line[0])
-            target_tokens = tokenizer.tokenize(line[1])
+            source_tokens = tokenizer.tokenize(line[0].lower())
+            target_tokens = tokenizer.tokenize(line[1].lower())
 
             source_sentences.append(source_tokens)
             target_sentences.append(['<s>'] + target_tokens + ['</s>']) # adds the start and end tokens to the target sentences 
