@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import json
 import nltk
+from nltk.tokenize import RegexpTokenizer
 
 FLAGS = flags.FLAGS
 
@@ -69,13 +70,15 @@ def main(data_path):
     data_path = FLAGS.data_path
     vocab_path = FLAGS.vocab_path
 
+    tokenizer = RegexpTokenizer(r'\w+')
+
     source_sentences = []
     target_sentences = []
     with open(data_path, 'r+') as f:
         for line in f:
             line = line.split(',')
-            source_tokens = nltk.word_tokenize(line[0])
-            target_tokens = nltk.word_tokenize(line[1])
+            source_tokens = tokenizer.tokenize(line[0])
+            target_tokens = tokenizer.tokenize(line[1])
 
             source_sentences.append(source_tokens)
             target_sentences.append(['<s>'] + target_tokens + ['</s>']) # adds the start and end tokens to the target sentences 
