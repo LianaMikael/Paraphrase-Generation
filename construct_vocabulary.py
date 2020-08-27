@@ -1,9 +1,8 @@
 from absl import app, logging, flags
-import torch
-import torch.nn as nn
 import json
 import nltk
 from nltk.tokenize import RegexpTokenizer
+import sys
 
 FLAGS = flags.FLAGS
 
@@ -63,12 +62,7 @@ class Vocabulary():
 
         return Vocabulary(source_vocab, target_vocab)
 
-
-def main(data_path):
-    # reads the data file containing both the source and the target sentences, builds the vocabulary and saves into a json file 
-
-    data_path = FLAGS.data_path
-    vocab_path = FLAGS.vocab_path
+def read(data_path):
 
     tokenizer = RegexpTokenizer(r'\w+')
 
@@ -83,8 +77,24 @@ def main(data_path):
             source_sentences.append(source_tokens)
             target_sentences.append(['<s>'] + target_tokens + ['</s>']) # adds the start and end tokens to the target sentences 
 
+    return source_sentences, target_sentences
+
+def main(_):
+    # reads the data file containing both the source and the target sentences, builds the vocabulary and saves into a json file 
+
+    data_path = FLAGS.data_path
+    vocab_path = FLAGS.vocab_path
+
+    source_sentences, target_sentences = read(data_path)
+
     vocab = Vocabulary.build(source_sentences, target_sentences)
     vocab.save(vocab_path)
+
+    print('HERE')
+    print(FLAGS(sys.argv))
+
+    #FLAGS.remove_flag_values (FLAGS(sys.argv))
+    del_all_flags(FLAGS)
 
 if __name__ == '__main__':
     app.run(main)
