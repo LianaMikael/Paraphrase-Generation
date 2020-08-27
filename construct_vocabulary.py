@@ -90,12 +90,6 @@ def main(_):
     vocab = Vocabulary.build(source_sentences, target_sentences)
     vocab.save(vocab_path)
 
-    print('HERE')
-    print(FLAGS(sys.argv))
-
-    #FLAGS.remove_flag_values (FLAGS(sys.argv))
-    del_all_flags(FLAGS)
-
 if __name__ == '__main__':
     app.run(main)
 
