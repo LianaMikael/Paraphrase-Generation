@@ -6,7 +6,7 @@ import sys
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('data_path', None, 'Data file path (csv)')
+flags.DEFINE_string('data_path', 'train_data.csv.', 'Data file path (csv)')
 flags.DEFINE_string('vocab_path', 'vocab.json', 'Vocabulary file path (json)')
 flags.mark_flag_as_required('data_path')
 
