@@ -52,7 +52,7 @@ class Paraphraser(nn.Module):
         self.target_vocab_proj = nn.Linear(in_features = self.hidden_size, out_features = len(self.vocab.target_vocab), bias = False)
 
         # dropout rate for attention 
-        self.dopout = nn.Dropout(self.dropout_rate)
+        self.dropout = nn.Dropout(self.dropout_rate)
 
     def forward(self, source, target):
         # computes a probability of composed target senteces for a given batch 
@@ -70,11 +70,11 @@ class Paraphraser(nn.Module):
         padded_target = self.pad_sentences(word_ids_target)
 
         # convert padded source and target lists into tensors 
-        padded_source = torch.tensor(padded_source, dtype=torch.long, device=self.device).T
-        padded_target = torch.tensor(padded_target, dtype=torch.long, device=self.device).T
+        padded_source = torch.t(torch.tensor(padded_source, dtype=torch.long, device=self.device))
+        padded_target = torch.t(torch.tensor(padded_target, dtype=torch.long, device=self.device))
 
         # apply encoder function to padded source sentences to obtain the encoder hidden state and the decoder initil state
-        enc_hidden, dec_init_state = self.encode(padded_source, padded_target)
+        enc_hidden, dec_init_state = self.encode(padded_source, source_lengths)
 
         # genrate encoder masks 
         enc_masks = self.generate_masks(enc_hidden, source_lengths)
@@ -87,11 +87,12 @@ class Paraphraser(nn.Module):
 
         # zero out the probability for the padding tokens since there are not present in the target corpus 
         padded_target = padded_target[1:] # to remove the start token 
-        target_masks = (padded_target != self.vocab.target_vocab['<pad>'].float())
+        target_masks = (padded_target != self.vocab.target_vocab['<pad>']).float()
 
         # compute the log-probability distribution over the true target words 
         indices = padded_target.unsqueeze(-1)
-        final_words_probs = torch.gather(probs, index=indices).squeeze(-1) * target_masks
+      
+        final_words_probs = torch.gather(probs, index=indices, dim=-1).squeeze(-1) * target_masks
         final_scores = torch.sum(final_words_probs, dim=0)
 
         return final_scores
@@ -99,9 +100,9 @@ class Paraphraser(nn.Module):
     def encode(self, source_padded, source_lengths):
         # using the embeddings, contrust a tensor of source sentences (source_len, batch_size, embed_size)
         source_embed = self.embeddings.source(source_padded)
-
+    
         # pad the packed sequence source_embed for fewer computations
-        source_embed = nn.utils.pack_padded_sequence(source_embed, source_lengths)
+        source_embed = nn.utils.rnn.pack_padded_sequence(source_embed, source_lengths)
 
         # apply the encoder bidirectional LSTM to obatin the encoder hidden state, final hidden (forward and backward) state and the cell state 
         enc_hidden, (final_hidden, final_cell) = self.encoder(source_embed)
@@ -113,7 +114,7 @@ class Paraphraser(nn.Module):
         final_cell_state = torch.cat([final_cell[0], final_cell[1]], dim=1)
 
         # pad back the encoder hidden states
-        enc_hidden = nn.utils.pad_packed_sequence(enc_hidden)[0]
+        enc_hidden = nn.utils.rnn.pad_packed_sequence(enc_hidden)[0]
 
         # permute the tensor from (source_len, batch_size, 2*hidden_size) to (batch_size, source_len, 2*hidden_size)
         enc_hidden = enc_hidden.permute(1, 0, 2)
@@ -177,7 +178,7 @@ class Paraphraser(nn.Module):
 
         # set -inf, attention socres for padding tokens
         if enc_masks is not None:
-            att_scores.masked_fill_(enc_masks.bool(), -float('inf'))
+            att_scores.masked_fill_(enc_masks.to(torch.uint8), -float('inf'))
 
         # apply softmax to attention scores to obtain attention probability distribution 
         att = F.softmax(att_scores, dim=1)
@@ -200,7 +201,7 @@ class Paraphraser(nn.Module):
 
         padded_sents = []
         for i in range(len(sentences)):
-            padded_sents.append(sentences[i] + ['<pad>'] * (max(lengths) - lengths[i]))
+            padded_sents.append(sentences[i] + [0] * (max(lengths) - lengths[i]))
 
         return padded_sents
 

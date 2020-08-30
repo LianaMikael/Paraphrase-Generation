@@ -27,7 +27,7 @@ for row in data:
 all_data = list(zip(all_source, all_target))
 np.random.shuffle(all_data)
 
-source_train, source_val, target_train, target_val = train_test_split([x[0] for x in all_data], [x[1] for x in all_data], test_size=0.3)
+source_train, source_val, target_train, target_val = train_test_split([x[0] for x in all_data], [x[1] for x in all_data], test_size=0.1)
 
 for i in range(len(source_train)):
     out_f_train.write('{},{}\n'.format(source_train[i], target_train[i]))
