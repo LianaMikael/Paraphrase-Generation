@@ -206,10 +206,10 @@ class Paraphraser(nn.Module):
         return padded_sents
 
     @staticmethod
-    def load(path):
+    def load(path, device):
         # loads a saved model 
         params = torch.load(path)
-        model = Paraphraser(vocab=params['vocab'], **params['args'])
+        model = Paraphraser(vocabulary=params['vocab'], **params['args'], device=device)
         model.load_state_dict(params['state_dict'])
 
         print('Loaded the model from ' + path)
@@ -223,7 +223,7 @@ class Paraphraser(nn.Module):
             'args': dict(embed_size=self.embeddings.embed_size, hidden_size = self.hidden_size, dropout_rate=self.dropout_rate),
             'vocab': self.vocab,
             'state_dict': self.state_dict()
-        }
+        }_
 
         torch.save(params, path)
 

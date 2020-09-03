@@ -16,9 +16,6 @@ class Vocabulary():
         self.source_vocab = source_vocab
         self.target_vocab = target_vocab 
 
-        self.source_id_word = {word: i for word, i in self.source_vocab.items()}
-        self.target_id_word = {word: i for word, i in self.target_vocab.items()}
-
     @staticmethod
     def construct_vocab_entry(corpus):
         # initializes word -> index dictionary inclduing pad, start, end and uknown tokens 
@@ -73,7 +70,7 @@ def read(data_path):
             line = line.split(',')
             source_tokens = tokenizer.tokenize(line[0].lower())
             target_tokens = tokenizer.tokenize(line[1].lower())
-
+        
             source_sentences.append(source_tokens)
             target_sentences.append(['<s>'] + target_tokens + ['</s>']) # adds the start and end tokens to the target sentences 
 

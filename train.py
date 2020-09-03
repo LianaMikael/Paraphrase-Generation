@@ -49,8 +49,10 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
     total_loss = 0
     report_loss = 0
     report_examples = 0
-    train_i = 0
-    for epoch in range(0,epochs):
+    train_i = 0 
+    val_perplexities = []
+
+    for epoch in range(0, epochs):
         np.random.shuffle(examples)
         batches = generate_batches(examples, train_batch_size)
         for batch in batches:
@@ -69,7 +71,7 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
             loss.backward()
             
             # clip gradient to avoid gradient explosion 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            nn.utils.clip_grad_norm_(model.parameters(), 5.0)
 
             optimizer.step()
 
@@ -77,8 +79,8 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
             total_loss += batch_loss.item()
             report_examples += train_batch_size 
 
-            # report results every 1000 iterations 
-            if train_i % 1000 == 0:
+            # report results every 500 iterations 
+            if train_i % 500 == 0:
                 print('epoch {}, train iter {}, average loss {}'.format(epoch+1, train_i, report_loss/report_examples))
                 report_loss = 0
                 report_examples = 0
@@ -86,21 +88,33 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
                 model.eval()
                 total_val_loss = 0
                 total_val_words = 0
-                # perform validation every 1000 iterations
-                with torch.no_grad():
-                    val_data = generate_batches(list(zip(val_data_source, val_data_target)), 32)
-                    
-                    val_losses = - model(source = val_data[0][0], target = val_data[0][1])
-                    val_batch_loss = val_losses.sum()
-                    
-                    total_loss += val_batch_loss.item()
-                    total_val_words += sum(len(s[1:]) for s in val_data_target)
-                    perplexity = np.exp(total_loss / total_val_words)
 
-                print('epoch {}, train iter {}, perplexity {}'.format(epoch+1, train_i, perplexity))
+                # perform validation every 500 iterations
+                # save the model with the best perplexity 
+                with torch.no_grad():
+                    val_data = generate_batches(list(zip(val_data_source, val_data_target)), val_batch_size)
+                    
+                    for val_batch in val_data:
+                        val_source_batch, val_target_batch = val_batch
+
+                        val_losses = - model(source = val_source_batch, target = val_target_batch)
+                        val_batch_loss = val_losses.sum()
+                        
+                        total_val_loss += val_batch_loss.item()
+                        total_val_words += val_batch_size #sum(len(s[1:]) for s in val_target_batch)
+                    
+                    perplexity = total_val_loss / total_val_words
+                    val_perplexities.append(perplexity)
+                    
+                    print('epoch {}, train iter {}, val perplexity {}'.format(epoch+1, train_i, perplexity))
+                    print()
+                    
+                    if len(val_perplexities) == 1 or perplexity <= min(val_perplexities):
+
+                        model.save(save_model)
+
+                    
                 model.train()
-    # save the model after every epoch 
-    model.save(save_model)
 
 def generate_batches(examples, batch_size):
     # generates mini-batches of source and target senteces for training in decreasing order
@@ -109,9 +123,10 @@ def generate_batches(examples, batch_size):
     for i in range(int(np.ceil(len(examples)/batch_size))):
 
         batch = []
-        for i in range(batch_size):
-            if len(examples[i][0]) > 0 and len(examples[i][1]) > 0: 
-                batch.append(examples[i])
+        for j in range(i * batch_size, (i+1) * batch_size):
+            
+            if j < len(examples) and len(examples[j][0]) > 0 and len(examples[j][1]) > 0: 
+                batch.append(examples[j])
 
         sorted_examples = sorted(batch, key=lambda x: len(x[0]), reverse=True)
         
@@ -119,7 +134,7 @@ def generate_batches(examples, batch_size):
         target_batch = [x[1] for x in sorted_examples]
         
         full_batches.append([source_batch, target_batch])
-
+    
     return full_batches
 
 def main(_):
@@ -138,8 +153,8 @@ def main(_):
     lr = FLAGS.lr
     epochs = FLAGS.epochs
 
+    print('Started training... ')
     train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device)
-
 
 if __name__ == '__main__':
     app.run(main)
