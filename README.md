@@ -1,6 +1,6 @@
 # Paraphrase-Generation
 
-This repository explores sequence-to-sequence paraphrase generation inspired by neural machine translation. 
+This repository explores sequence-to-sequence paraphrase generation inspired by neural machine translation. The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional decoder and a global attention mechanism.  
 
 Install required packages
 ```
