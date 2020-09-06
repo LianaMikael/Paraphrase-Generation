@@ -21,12 +21,13 @@ flags.DEFINE_integer('embed_size', 512, 'embeddings dimentionality')
 flags.DEFINE_integer('hidden_size', 512, 'LSTM hidden size')
 flags.DEFINE_float('lr', 0.001, 'Learning rate')
 flags.DEFINE_integer('epochs', 5, 'Max number of epochs')
+flags.DEFINE_integer('save_every', 400, 'Dsiplay and save iterations')
 
 #flags.mark_flag_as_required('data_path')
 #flags.mark_flag_as_required('val_path')
 
 
-def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device):
+def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, device):
     # performs model training 
     train_data_source, train_data_target = read(train_path)
     val_data_source, val_data_target = read(val_path)
@@ -71,8 +72,8 @@ def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_s
             total_loss += batch_loss.item()
             report_examples += train_batch_size 
 
-            # report results every 100 iterations 
-            if train_i % 1 == 0:
+            # report results every 400 iterations 
+            if train_i % save_every == 0:
                 print('epoch {}, train iter {}, average loss {}'.format(epoch+1, train_i, report_loss/report_examples))
                 report_loss = 0
                 report_examples = 0
@@ -143,6 +144,8 @@ def main(_):
     lr = FLAGS.lr
     epochs = FLAGS.epochs
 
+    save_every = FLAGS.save_every
+
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
     if FLAGS.load_model:
@@ -160,7 +163,7 @@ def main(_):
             param.data.uniform_(-0.1, 0.1)
 
     print('Started training... ')
-    train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device)
+    train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, device)
 
 if __name__ == '__main__':
     app.run(main)
