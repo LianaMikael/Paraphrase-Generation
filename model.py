@@ -223,7 +223,7 @@ class Paraphraser(nn.Module):
             'args': dict(embed_size=self.embeddings.embed_size, hidden_size = self.hidden_size, dropout_rate=self.dropout_rate),
             'vocab': self.vocab,
             'state_dict': self.state_dict()
-        }_
+        }
 
         torch.save(params, path)
 

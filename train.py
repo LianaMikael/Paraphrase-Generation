@@ -11,9 +11,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('train_path', 'train_data.csv', 'Train file path (csv)')
 flags.DEFINE_string('val_path', 'val_data.csv', 'Validation file path (csv)')
 #flags.DEFINE_string('vocab_path', 'vocab.json', 'Vocabulary file path (json)')
-flags.DEFINE_integer('train_batch_size', 32, 'Train batch size')
-flags.DEFINE_integer('val_batch_size', 64, 'Validation batch size')
-flags.DEFINE_string('save_model', 'model.bin', 'Model save path')
+flags.DEFINE_integer('train_batch_size', 128, 'Train batch size')
+flags.DEFINE_integer('val_batch_size', 128, 'Validation batch size')
+flags.DEFINE_string('save_model', 'model_new.bin', 'Model save path')
+flags.DEFINE_string('load_model', 'model_new.bin', 'Model load path')
 flags.DEFINE_string('device', 'cuda', 'Device')
 
 flags.DEFINE_integer('embed_size', 512, 'embeddings dimentionality')
@@ -25,21 +26,12 @@ flags.DEFINE_integer('epochs', 5, 'Max number of epochs')
 #flags.mark_flag_as_required('val_path')
 
 
-def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device):
+def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device):
     # performs model training 
     train_data_source, train_data_target = read(train_path)
     val_data_source, val_data_target = read(val_path)
 
-    vocab = Vocabulary.load(vocab_path)
-
-    model = Paraphraser(embed_size, hidden_size, vocab, device)
     model.train()
-
-    # uniformly initialize the parameters
-    for param in model.parameters():
-        param.data.uniform_(-0.1, 0.1)
-
-    model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr)
 
@@ -79,8 +71,8 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
             total_loss += batch_loss.item()
             report_examples += train_batch_size 
 
-            # report results every 500 iterations 
-            if train_i % 500 == 0:
+            # report results every 100 iterations 
+            if train_i % 100 == 0:
                 print('epoch {}, train iter {}, average loss {}'.format(epoch+1, train_i, report_loss/report_examples))
                 report_loss = 0
                 report_examples = 0
@@ -101,7 +93,7 @@ def train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, em
                         val_batch_loss = val_losses.sum()
                         
                         total_val_loss += val_batch_loss.item()
-                        total_val_words += val_batch_size #sum(len(s[1:]) for s in val_target_batch)
+                        total_val_words += val_batch_size 
                     
                     perplexity = total_val_loss / total_val_words
                     val_perplexities.append(perplexity)
@@ -146,15 +138,29 @@ def main(_):
     val_batch_size = FLAGS.val_batch_size
     save_model = FLAGS.save_model
 
-    device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
-
     embed_size = FLAGS.embed_size
     hidden_size = FLAGS.hidden_size
     lr = FLAGS.lr
     epochs = FLAGS.epochs
 
+    device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
+
+    if FLAGS.save_model:
+        load_model = FLAGS.load_model
+        print('loading model from {}'.format(load_model))
+        model = Paraphraser.load(load_model, device)
+
+    else:
+        vocab = Vocabulary.load(vocab_path)
+
+        model = Paraphraser(embed_size, hidden_size, vocab, device)
+
+         # uniformly initialize the parameters
+        for param in model.parameters():
+            param.data.uniform_(-0.1, 0.1)
+
     print('Started training... ')
-    train(train_path, val_path, vocab_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device)
+    train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, device)
 
 if __name__ == '__main__':
     app.run(main)
