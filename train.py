@@ -11,9 +11,9 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('train_path', 'train_data.csv', 'Train file path (csv)')
 flags.DEFINE_string('val_path', 'val_data.csv', 'Validation file path (csv)')
 #flags.DEFINE_string('vocab_path', 'vocab.json', 'Vocabulary file path (json)')
-flags.DEFINE_integer('train_batch_size', 128, 'Train batch size')
+flags.DEFINE_integer('train_batch_size', 256, 'Train batch size')
 flags.DEFINE_integer('val_batch_size', 128, 'Validation batch size')
-flags.DEFINE_string('save_model', None, 'Model save path')
+flags.DEFINE_string('save_model', 'test.bin', 'Model save path')
 flags.DEFINE_string('load_model', 'model.bin', 'Model load path')
 flags.DEFINE_string('device', 'cuda', 'Device')
 
@@ -72,7 +72,7 @@ def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_s
             report_examples += train_batch_size 
 
             # report results every 100 iterations 
-            if train_i % 100 == 0:
+            if train_i % 1 == 0:
                 print('epoch {}, train iter {}, average loss {}'.format(epoch+1, train_i, report_loss/report_examples))
                 report_loss = 0
                 report_examples = 0
@@ -145,7 +145,7 @@ def main(_):
 
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
-    if FLAGS.save_model:
+    if FLAGS.load_model:
         load_model = FLAGS.load_model
         print('loading model from {}'.format(load_model))
         model = Paraphraser.load(load_model, device)
