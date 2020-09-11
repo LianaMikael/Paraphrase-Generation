@@ -21,13 +21,14 @@ flags.DEFINE_integer('embed_size', 512, 'embeddings dimentionality')
 flags.DEFINE_integer('hidden_size', 512, 'LSTM hidden size')
 flags.DEFINE_float('lr', 0.001, 'Learning rate')
 flags.DEFINE_integer('epochs', 5, 'Max number of epochs')
-flags.DEFINE_integer('save_every', 400, 'Dsiplay and save iterations')
+flags.DEFINE_integer('save_every', 200, 'Evaluate and save iterations')
+flags.DEFINE_integer('display_every', 10, 'Display training details')
 
 #flags.mark_flag_as_required('data_path')
 #flags.mark_flag_as_required('val_path')
 
 
-def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, device):
+def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, display_every, device):
     # performs model training 
     train_data_source, train_data_target = read(train_path)
     val_data_source, val_data_target = read(val_path)
@@ -72,18 +73,20 @@ def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_s
             total_loss += batch_loss.item()
             report_examples += train_batch_size 
 
-            # report results every 400 iterations 
-            if train_i % save_every == 0:
+            # report training statistics  
+            if train_i % display_every == 0:
                 print('epoch {}, train iter {}, average loss {}'.format(epoch+1, train_i, report_loss/report_examples))
                 report_loss = 0
                 report_examples = 0
 
+            # evaluate and save the model
+            if train_i % save_every == 0:
                 model.eval()
                 total_val_loss = 0
                 total_val_words = 0
 
-                # perform validation every 500 iterations
-                # save the model with the best perplexity 
+                # perform validation 
+                # save the model with the best val loss
                 with torch.no_grad():
                     val_data = generate_batches(list(zip(val_data_source, val_data_target)), val_batch_size)
                     
@@ -99,7 +102,7 @@ def train(model, train_path, val_path, train_batch_size, val_batch_size, embed_s
                     perplexity = total_val_loss / total_val_words
                     val_perplexities.append(perplexity)
                     
-                    print('epoch {}, train iter {}, val perplexity {}'.format(epoch+1, train_i, perplexity))
+                    print('epoch {}, train iter {}, val loss {}'.format(epoch+1, train_i, perplexity))
                     print()
                     
                     if len(val_perplexities) == 1 or perplexity <= min(val_perplexities):
@@ -145,6 +148,7 @@ def main(_):
     epochs = FLAGS.epochs
 
     save_every = FLAGS.save_every
+    display_every = FLAGS.display_every 
 
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
@@ -163,7 +167,7 @@ def main(_):
             param.data.uniform_(-0.1, 0.1)
 
     print('Started training... ')
-    train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, device)
+    train(model, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, display_every, device)
 
 if __name__ == '__main__':
     app.run(main)
