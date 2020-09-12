@@ -1,6 +1,7 @@
 # Paraphrase-Generation
 
-This repository explores sequence-to-sequence paraphrase generation inspired by early neural machine translation models. This is a natural language generation task where for a given text, the objective is to generate a semantically similar sentence that is expressed differently. The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional LSTM decoder and a global attention mechanism. I explore both word-level embeddings as well as byte pair encoding.      
+This repository explores sequence-to-sequence paraphrase generation inspired by early neural machine translation models. This is a natural language generation task where for a given text, the objective is to generate a semantically similar sentence that is expressed differently. The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional LSTM decoder and a global attention mechanism. I explore both word-level embeddings as well as byte pair encoding. 
+Automatic evaluation includes both word overlap-based methods as well as embedding-based metrics. Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (BLEU score, word error rate). Embedding-based metrics consider meanings of sentences by combining word embeddings (Word2Vec, Glove) and compute a distance measure (cosine distance) between embedding vectors of predicted and target sentences.   
 
 Install required packages
 ```
@@ -23,4 +24,8 @@ Perform training
 ```
 python3 train.py --train_path train_data.csv --val_path val_data.csv --device cpu
 ```
- 
+
+Perform evaluation 
+'''
+python3 evaluate.py --test_path test_data.csv --device cpu
+''' 
