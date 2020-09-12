@@ -20,7 +20,7 @@ flags.DEFINE_integer('beam_size', 10, 'Beam size')
 flags.DEFINE_integer('max_decode_time', 25, 'Maximum decoding time step')
 
 
-def decode(test_path, load_model, beam_size, max_t, hidden_size, device):
+def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device):
     # performs beam search decoding 
     test_source, test_target = read(test_path)
 
@@ -31,8 +31,14 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, device):
     all_greedy_snets = []
     all_beam_search_sents = []
 
+    f = open(output_file, 'w+')
+    f.write('{},{},{},{}\n'.format('source sentence', 'target sentence', 'greedy hypothesis', 'beam search hypothesis'))
+
     # perform beam search and greedy decoding for each source sentence 
-    for source_sentence in test_source:
+    for i in range(len(test_source)):
+        source_sentence = test_source[i]
+        target_sentence = test_target[i]
+        
         if len(source_sentence) > 0:
             print(source_sentence)
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
@@ -42,6 +48,10 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, device):
             all_beam_search_sents.append(all_hypotheses[0][0])
             print(all_hypotheses[0][0])
             print()
+
+            f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
+
+    f.close()
         
     return test_target, all_greedy_snets, all_beam_search_sents
 
@@ -179,12 +189,13 @@ def main(_):
     beam_size = FLAGS.beam_size
     max_t = FLAGS.max_decode_time
 
+    output_file = FLAGS.save_output
     hidden_size = FLAGS.hidden_size
 
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
     print('Started decoding...')
-    targets, greedy_snets, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, device)
+    targets, greedy_snets, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device)
 
     print('Decoding completed.')
 
