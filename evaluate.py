@@ -30,6 +30,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
 
     all_greedy_snets = []
     all_beam_search_sents = []
+    all_test_target = []
 
     f = open(output_file, 'w+')
     f.write('{},{},{},{}\n'.format('source sentence', 'target sentence', 'greedy hypothesis', 'beam search hypothesis'))
@@ -38,9 +39,10 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
     for i in range(len(test_source)):
         source_sentence = test_source[i]
         target_sentence = test_target[i]
-        
+
         if len(source_sentence) > 0:
             print(source_sentence)
+            all_test_target.append(target_sentence)
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
 
             all_greedy_snets.append(greedy_hypothesis)
@@ -50,10 +52,12 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
             print()
 
             f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
+    
 
+    print('Results saved into ', output_file)
     f.close()
         
-    return test_target, all_greedy_snets, all_beam_search_sents
+    return all_test_target, all_greedy_snets, all_beam_search_sents
 
 
 def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device):
@@ -133,7 +137,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
             h_word_id = h_word_id.item()
             new_h_score = new_h_score.item()
 
-            potential_word = target_id_word[h_word_id]
+            potential_word = target_id_word.get(h_word_id, '<unk>')
            
             new_hyp_sent = hypotheses[prev_h_id] + [potential_word]
             
@@ -152,8 +156,8 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
 
         live_hyp_ids = torch.tensor(live_hyp_ids, dtype=torch.long, device=device)
 
-        dec_state_h = (dec_state[0][live_hyp_ids], new_att[live_hyp_ids])
-        att = att[live_hyp_ids]
+        dec_state_h = (dec_state[0][live_hyp_ids], dec_state[1][live_hyp_ids])
+        att = new_att[live_hyp_ids]
 
         hypotheses = new_hypotheses
         scores = torch.tensor(new_hyp_scores, dtype=torch.float, device=device)
@@ -166,7 +170,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
     
     return greedy_hypothesis, all_hypotheses
 
-def evaluate(predictions, targets):
+def evaluate_word_level(predictions, targets):
     # evaluate results with corpus-level BLEU score and average word error rate 
 
     assert len(predictions) == len(targets)
@@ -180,6 +184,10 @@ def evaluate(predictions, targets):
 
     return np.mean(wers), BLEU
 
+def evaluate_embeddings(predictions, targets):
+    # construct sentence embeddings by combining word embeddings 
+    # compute cosine similarity between sentence embeddings of prediction and target sentences 
+    pass 
 
 def main(_):
     test_path = FLAGS.test_path
