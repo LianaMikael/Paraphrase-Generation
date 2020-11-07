@@ -184,11 +184,6 @@ def evaluate_word_level(predictions, targets):
 
     return np.mean(wers), BLEU
 
-def evaluate_embeddings(predictions, targets):
-    # construct sentence embeddings by combining word embeddings 
-    # compute cosine similarity between sentence embeddings of prediction and target sentences 
-    pass 
-
 def main(_):
     test_path = FLAGS.test_path
     device = FLAGS.device
@@ -207,7 +202,9 @@ def main(_):
 
     print('Decoding completed.')
 
-    wer_score, BLEU_score = evaluate(targets, beam_search_sents)
+    evaluate_embeddings(targets, beam_search_sents)
+
+    wer_score, BLEU_score = evaluate_word_level(targets, beam_search_sents)
     print('Word Error Rate: ', wer_score)
     print('BLEU score: ', BLEU_score)
 
