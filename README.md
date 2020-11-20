@@ -31,8 +31,8 @@ This gives us the combined output vector for the current time step. To compute t
 
 There are three main ways to generate output: 
 - Random sampling (not implemented here) 
-- Greedy Decoding 
-- Beam Search
+- Greedy Decoding: at each time step, select the word from the vocabulary with the highst score obtained by performing one decoder step, continue until the end token is reached or a pre-defined maximum number of steps is completed.  
+- Beam Search: at each time step, keep track of * * k * * (beam size) most probable hypotheses, for each hypothesis continue until the end token is reached, stop the process when a maximum number of steps is reached or a pre-defined minimum number of hypotheses are generated.  
 
 ## How To Use
 
