@@ -16,7 +16,7 @@ The purpose of these vectors is to encapsulate information about the sentence so
 
 During decoding, at each time step, we look up the embeddings of the current target word and contcatenate it with the previous combined output vector (initalized as a vector of zeros).
 
-Multiplicative attention is calculated by applying a projection layer to the encoder's hidden state, multiplying by the current hidden state of the decoder, applying a softmax function to get attention probability distribution and multiplyingit with encoder's hidden state: 
+Multiplicative attention is calculated by applying a projection layer to the encoder's hidden state, multiplying by the current hidden state of the decoder, applying a softmax function to get attention probability distribution and multiplying it with encoder's hidden state: 
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=\\e_{t,i}&space;=&space;(h^{dec}_t)^TWh_i^{enc}&space;\\p_t=softmax(e_t)&space;\\a_t&space;=&space;\sum_{i=1}^{m}p_{t,i}h_i^{enc}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\\e_{t,i}&space;=&space;(h^{dec}_t)^TWh_i^{enc}&space;\\p_t=softmax(e_t)&space;\\a_t&space;=&space;\sum_{i=1}^{m}p_{t,i}h_i^{enc}" title="\\e_{t,i} = (h^{dec}_t)^TWh_i^{enc} \\p_t=softmax(e_t) \\a_t = \sum_{i=1}^{m}p_{t,i}h_i^{enc}" /></a>
 
@@ -25,14 +25,14 @@ Finally, we concatenate the attention output vector with decoder's hidden state 
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=\\u_t=[a_t,h_t^{dec}]&space;\\v_t=W&space;u_t&space;\\o_t=dropout(tanh(v_t))" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\\u_t=[a_t,h_t^{dec}]&space;\\v_t=W&space;u_t&space;\\o_t=dropout(tanh(v_t))" title="\\u_t=[a_t,h_t^{dec}] \\v_t=W u_t \\o_t=dropout(tanh(v_t))" /></a>
 
-This gives as the combined output vector for the current time step. To compute the probability distribution over the target words, we apply a softmax. This is then passed through softmax cross entropy along with the target word's vector to obtain loss for training. 
+This gives us the combined output vector for the current time step. To compute the probability distribution over the target words, we apply a softmax. This is then passed through softmax cross entropy along with the target word's vector to obtain loss for training. 
 
 ## Output Sentence Generation
 
 There are three main ways to generate output: 
-	- Random sampling (not implemented here) 
-	- Greedy Decoding 
-	_ Beam Search
+- Random sampling (not implemented here) 
+- Greedy Decoding 
+- Beam Search
 
 ## How To Use
 
@@ -62,3 +62,9 @@ Perform evaluation
 ```
 python3 evaluate.py --test_path test_data.csv --device cpu
 ```
+
+## References
+
+- Graham Neubig, Neural Machine Translation and Sequence-to-sequence Models: A Tutorial. Carnegie Mellon University (2017). [Graham Neubig](https://arxiv.org/pdf/1703.01619.pdf)
+
+- Stanford CS224n Natural Language Processing with Deep Learning [CS224n](http://web.stanford.edu/class/cs224n/)
