@@ -12,23 +12,20 @@ from collections import namedtuple
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('test_path', 'test_data.csv', 'Test file path (csv)')
-#flags.DEFINE_string('load_model', 'model.bin', 'Model load path')
+flags.DEFINE_string('test_path', 'val_data.csv', 'Test file path (csv)')
 flags.DEFINE_string('save_output', 'output.csv', 'Path to save output')
-
 flags.DEFINE_integer('beam_size', 10, 'Beam size')
 flags.DEFINE_integer('max_decode_time', 25, 'Maximum decoding time step')
 
-
 def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device):
-    # performs beam search decoding 
+    # performs decoding 
     test_source, test_target = read(test_path)
 
-    print('loading model from {}'.format(load_model))
+    print('Loading model from {}'.format(load_model))
     model = Paraphraser.load(load_model, device)
     model.to(device)
 
-    all_greedy_snets = []
+    all_greedy_sents = []
     all_beam_search_sents = []
     all_test_target = []
 
@@ -45,7 +42,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
             all_test_target.append(target_sentence)
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
 
-            all_greedy_snets.append(greedy_hypothesis)
+            all_greedy_sents.append(greedy_hypothesis)
             print(greedy_hypothesis)
             all_beam_search_sents.append(all_hypotheses[0][0])
             print(all_hypotheses[0][0])
@@ -57,7 +54,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
     print('Results saved into ', output_file)
     f.close()
         
-    return all_test_target, all_greedy_snets, all_beam_search_sents
+    return all_test_target, all_greedy_sents, all_beam_search_sents
 
 
 def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device):
@@ -163,24 +160,28 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
         scores = torch.tensor(new_hyp_scores, dtype=torch.float, device=device)
 
     if len(all_hypotheses) == 0:
-        all_hypotheses.append(Hypothesis(value=hypotheses[0][1:],
-                                                score=scores[0].item()))
+        all_hypotheses.append(Hypothesis(value=hypotheses[0][1:], score=scores[0].item()))
 
     all_hypotheses.sort(key=lambda hyp: hyp.score, reverse=True)
     
     return greedy_hypothesis, all_hypotheses
 
-def evaluate_word_level(predictions, targets):
+def evaluate_word_level(targets, predictions):
     # evaluate results with corpus-level BLEU score and average word error rate 
 
     assert len(predictions) == len(targets)
 
     wers = []
+    clean_targets = []
+    clean_predictions = []
     for pred, target in zip(predictions, targets):
         if len(target) > 0 and len(pred) > 0: 
             wers.append(wer(target, pred))
+            clean_targets.append(target)
+            clean_predictions.append(pred)
             
-    BLEU = nltk.translate.bleu_score.corpus_bleu(targets, predictions)
+    print(clean_predictions)
+    BLEU = nltk.translate.bleu_score.corpus_bleu(clean_targets, clean_predictions)
 
     return np.mean(wers), BLEU
 
@@ -198,15 +199,15 @@ def main(_):
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
     print('Started decoding...')
-    targets, greedy_snets, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device)
+    targets, greedy_sents, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device)
 
     print('Decoding completed.')
 
-    evaluate_embeddings(targets, beam_search_sents)
+    wer_score_bs, BLEU_score_bs = evaluate_word_level(targets[1:-1], beam_search_sents)
+    wer_score_greey, BLEU_score_greedy = evaluate_word_level(targets[1:-1], greedy_sents)
 
-    wer_score, BLEU_score = evaluate_word_level(targets, beam_search_sents)
-    print('Word Error Rate: ', wer_score)
-    print('BLEU score: ', BLEU_score)
+    print('Word Error Rate with beam search decoding: {}, with greedy decoding {}'.format(wer_score_bs, wer_score_greey))
+    print('Corpus level BLEU score with beam search decoding: {}, with greeedy decoding: {} '.format(BLEU_score_bs, BLEU_score_greedy))
 
 if __name__ == '__main__':
     app.run(main)
