@@ -17,7 +17,7 @@ flags.DEFINE_string('save_output', 'output.csv', 'Path to save output')
 flags.DEFINE_integer('beam_size', 10, 'Beam size')
 flags.DEFINE_integer('max_decode_time', 25, 'Maximum decoding time step')
 
-def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device):
+def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device, show_each=True):
     # performs decoding 
     test_source, test_target = read(test_path)
 
@@ -38,19 +38,21 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
         target_sentence = test_target[i]
 
         if len(source_sentence) > 0:
-            print(source_sentence)
             all_test_target.append(target_sentence)
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
 
             all_greedy_sents.append(greedy_hypothesis)
-            print(greedy_hypothesis)
             all_beam_search_sents.append(all_hypotheses[0][0])
-            print(all_hypotheses[0][0])
-            print()
+
+            if show_each:
+                print('source:', ' '.join(source_sentence))
+                print('greedy:', ' '.join(greedy_hypothesis))
+                print('beam search:', ' '.join(all_hypotheses[0][0]))
+                print('target:', ' '.join(target_sentence[1:-1]))
+                print()
 
             f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
     
-
     print('Results saved into ', output_file)
     f.close()
         
@@ -180,7 +182,6 @@ def evaluate_word_level(targets, predictions):
             clean_targets.append(target)
             clean_predictions.append(pred)
             
-    print(clean_predictions)
     BLEU = nltk.translate.bleu_score.corpus_bleu(clean_targets, clean_predictions)
 
     return np.mean(wers), BLEU
