@@ -59,7 +59,9 @@ class Paraphraser(nn.Module):
         # source: tensor of padded source sentences
         # target: tensor of padded target sentences including start and end tokens
         # source_lengths: ordered list of lengths of sentences in source 
-
+        
+        source = torch.t(source)
+        target = torch.t(target)
         # apply encoder function to padded source sentences to obtain the encoder hidden state and the decoder initil state
         enc_hidden, dec_init_state = self.encode(source, source_lengths)
 

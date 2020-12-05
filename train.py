@@ -4,6 +4,8 @@ import torch.nn as nn
 import numpy as np 
 from model import Paraphraser
 from construct_vocabulary import Vocabulary, read
+import torch.onnx 
+import onnx
 
 FLAGS = flags.FLAGS
 
@@ -11,7 +13,7 @@ flags.DEFINE_string('train_path', 'train_data.csv', 'Train file path (csv)')
 flags.DEFINE_string('val_path', 'val_data.csv', 'Validation file path (csv)')
 flags.DEFINE_integer('train_batch_size', 256, 'Train batch size')
 flags.DEFINE_integer('val_batch_size', 128, 'Validation batch size')
-flags.DEFINE_string('save_model', 'test.bin', 'Model save path')
+flags.DEFINE_string('save_model', 'model.bin', 'Model save path')
 flags.DEFINE_string('load_model', None, 'Model load path')
 flags.DEFINE_string('device', 'cuda', 'Device')
 
@@ -49,7 +51,7 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
             source_batch, target_batch = batch
 
             padded_source, padded_target, source_lengths = convert_tensors(source_batch, target_batch, vocab, device)
- 
+
             optimizer.zero_grad()
 
             current_batch_size = len(source_batch)
@@ -76,10 +78,10 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
 
             # evaluate and save the model with the best val loss
             if train_i % save_every == 0:
-                print('epoch {}, train iter {}, val loss {}'.format(epoch+1, train_i, perplexity))
-                print()
         
                 perplexity = validate(model, val_data_source, val_data_target, val_batch_size, vocab, device)
+                print('epoch {}, train iter {}, val loss {}'.format(epoch+1, train_i, perplexity))
+                print()
 
                 if len(val_perplexities) == 1 or perplexity <= min(val_perplexities):
                     model.save(save_model)
@@ -121,8 +123,9 @@ def convert_tensors(source, target, vocab, device):
     word_ids_target = [[vocab.target_vocab.get(word, vocab.target_vocab['<unk>']) for word in s] for s in target]
     padded_target = pad_sentences(word_ids_target)
 
-    padded_source = torch.t(torch.tensor(padded_source, dtype=torch.long, device=device))
-    padded_target = torch.t(torch.tensor(padded_target, dtype=torch.long, device=device))
+    padded_source = torch.tensor(padded_source, dtype=torch.long, device=device)
+    padded_target = torch.tensor(padded_target, dtype=torch.long, device=device)
+    source_lengths = torch.tensor(source_lengths)
 
     return padded_source, padded_target, source_lengths
 
@@ -157,6 +160,27 @@ def generate_batches(examples, batch_size):
     
     return full_batches
 
+def convert_onnx(model, val_path, vocab):
+    # exports the pytorch model to onnx 
+    # accepts source and target tensor with batch_size and padded_length of variable size and source_lengths
+    val_data_source, val_data_target = read(val_path)
+    val_data = generate_batches(list(zip(val_data_source, val_data_target)), 1)
+
+    val_source_batch, val_target_batch = val_data[0] # only one example is needed
+    s, t, l = convert_tensors(val_source_batch, val_target_batch, vocab, device='cpu')
+
+    torch.onnx.export(model, 
+                    (s,t,l), 
+                    "paraphraser.onnx", 
+                    opset_version=11,
+                    input_names = ['input'],  
+                    output_names = ['output'], 
+                    dynamic_axes={'input' : {0 : 'padded_size', 1: 'padded_size'}, 
+                                'output' : {0 : 'batch_size'}})
+
+    onnx_model = onnx.load("paraphraser.onnx")
+    onnx.checker.check_model(onnx_model)
+
 def main(_):
 
     train_path = FLAGS.train_path
@@ -189,7 +213,8 @@ def main(_):
 
     print('Started training... ')
     train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, display_every, device)
-
+    # convert best model to onnx 
+    convert_onnx(model.load(save_model, device), val_path, vocab) 
 if __name__ == '__main__':
     app.run(main)
 
