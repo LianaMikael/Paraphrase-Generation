@@ -54,44 +54,30 @@ class Paraphraser(nn.Module):
         # dropout rate for attention 
         self.dropout = nn.Dropout(self.dropout_rate)
 
-    def forward(self, source, target):
+    def forward(self, source, target, source_lengths):
         # computes a probability of composed target senteces for a given batch 
-        # source: list of source sentence tokens
-        # target: list of target sentence tokens including start and end tokens
-
-        source_lengths = [len(s) for s in source]
-
-        # convert list of lists of tokens into padded tokens
-        # for out of vocabulary words, assign '<unk>'
-        word_ids = [[self.vocab.source_vocab.get(word, self.vocab.source_vocab['<unk>']) for word in s] for s in source]
-        padded_source = self.pad_sentences(word_ids)
-
-        word_ids_target = [[self.vocab.target_vocab.get(word, self.vocab.target_vocab['<unk>']) for word in s] for s in target]
-        padded_target = self.pad_sentences(word_ids_target)
-
-        # convert padded source and target lists into tensors 
-        padded_source = torch.t(torch.tensor(padded_source, dtype=torch.long, device=self.device))
-        padded_target = torch.t(torch.tensor(padded_target, dtype=torch.long, device=self.device))
+        # source: tensor of padded source sentences
+        # target: tensor of padded target sentences including start and end tokens
+        # source_lengths: ordered list of lengths of sentences in source 
 
         # apply encoder function to padded source sentences to obtain the encoder hidden state and the decoder initil state
-        enc_hidden, dec_init_state = self.encode(padded_source, source_lengths)
+        enc_hidden, dec_init_state = self.encode(source, source_lengths)
 
         # genrate encoder masks 
         enc_masks = self.generate_masks(enc_hidden, source_lengths)
 
         # compute combined output vector constructed by the decode function 
-        combined_vec = self.decode(enc_hidden, enc_masks, dec_init_state, padded_target)
+        combined_vec = self.decode(enc_hidden, enc_masks, dec_init_state, target)
 
         # compute the log-probability of distribution over target words 
         probs = F.log_softmax(self.target_vocab_proj(combined_vec), dim=-1)
 
         # zero out the probability for the padding tokens since there are not present in the target corpus 
-        padded_target = padded_target[1:] # to remove the start token 
-        target_masks = (padded_target != self.vocab.target_vocab['<pad>']).float()
+        target = target[1:] # to remove the start token 
+        target_masks = (target != self.vocab.target_vocab['<pad>']).float()
 
         # compute the log-probability distribution over the true target words 
-        indices = padded_target.unsqueeze(-1)
-      
+        indices = target.unsqueeze(-1)
         final_words_probs = torch.gather(probs, index=indices, dim=-1).squeeze(-1) * target_masks
         final_scores = torch.sum(final_words_probs, dim=0)
 
@@ -178,7 +164,7 @@ class Paraphraser(nn.Module):
 
         # set -inf, attention socres for padding tokens
         if enc_masks is not None:
-            att_scores.masked_fill_(enc_masks.to(torch.uint8), -float('inf'))
+            att_scores.masked_fill_(enc_masks.bool(), -float('inf'))
 
         # apply softmax to attention scores to obtain attention probability distribution 
         att = F.softmax(att_scores, dim=1)
@@ -193,17 +179,6 @@ class Paraphraser(nn.Module):
         o_t = self.dropout(torch.tanh(self.combined_output_proj(dec_combined)))
 
         return dec_state, o_t
-
-    @staticmethod
-    def pad_sentences(sentences):
-        # pads given list of senteces with the pad token '<pad>'
-        lengths = [len(s) for s in sentences]
-
-        padded_sents = []
-        for i in range(len(sentences)):
-            padded_sents.append(sentences[i] + [0] * (max(lengths) - lengths[i]))
-
-        return padded_sents
 
     @staticmethod
     def load(path, device):
