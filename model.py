@@ -54,12 +54,12 @@ class Paraphraser(nn.Module):
         # dropout rate for attention 
         self.dropout = nn.Dropout(self.dropout_rate)
 
-    def forward(self, source, target, source_lengths):
+    def forward(self, source, target):
         # computes a probability of composed target senteces for a given batch 
         # source: tensor of padded source sentences
         # target: tensor of padded target sentences including start and end tokens
-        # source_lengths: ordered list of lengths of sentences in source 
-        
+
+        source_lengths = [len(source[i][source[i] != 0]) for i in range(source.shape[0])]
         source = torch.t(source)
         target = torch.t(target)
         # apply encoder function to padded source sentences to obtain the encoder hidden state and the decoder initil state
@@ -141,7 +141,6 @@ class Paraphraser(nn.Module):
             o_prev = o_t
             
         return torch.stack(combined_outputs)
-
 
     def generate_masks(self, enc_hidden, source_lengths):
         # generate encoder masks to zero out the padded tokens 
