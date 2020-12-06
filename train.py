@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import numpy as np 
 from model import Paraphraser
+from dataset import SentenceDataset
 from construct_vocabulary import Vocabulary, read
 import torch.onnx 
 import onnx
@@ -21,21 +22,12 @@ flags.DEFINE_integer('embed_size', 512, 'embeddings dimentionality')
 flags.DEFINE_integer('hidden_size', 512, 'LSTM hidden size')
 flags.DEFINE_float('lr', 0.001, 'Learning rate')
 flags.DEFINE_integer('epochs', 5, 'Max number of epochs')
-flags.DEFINE_integer('save_every', 10, 'Evaluate and save iterations')
+flags.DEFINE_integer('save_every', 100, 'Evaluate and save iterations')
 flags.DEFINE_integer('display_every', 10, 'Display training details')
 
-def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, display_every, device):
-    # performs model training 
-    train_data_source, train_data_target = read(train_path)
-    val_data_source, val_data_target = read(val_path)
-
+def train(model, vocab, train_loader, val_loader, optimizer, embed_size, hidden_size, epochs, save_model, save_every, display_every, device):
     model.train()
-
-    optimizer = torch.optim.Adam(model.parameters(), lr)
-
-    examples = list(zip(train_data_source, train_data_target))
-
-    # for each epoch, perform training on a shuffled mini-batch of sentences 
+    
     total_loss = 0
     report_loss = 0
     report_examples = 0
@@ -44,20 +36,17 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
     val_perplexities = []
 
     for epoch in range(0, epochs):
-        np.random.shuffle(examples)
-        batches = generate_batches(examples, train_batch_size)
-        for batch in batches:
+        for batch in train_loader:
 
             train_i += 1
-            source_batch, target_batch = batch
+            
+            padded_source, padded_target = process_batch(batch)
 
-            padded_source, padded_target = convert_tensors(source_batch, target_batch, vocab, device)
             optimizer.zero_grad()
 
-            current_batch_size = len(source_batch)
             current_losses = - model(padded_source, padded_target)
             batch_loss = current_losses.sum()
-            loss = batch_loss / current_batch_size 
+            loss = batch_loss / padded_source.shape[0]
             
             loss.backward()
             
@@ -68,7 +57,7 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
 
             report_loss += batch_loss.item()
             total_loss += batch_loss.item()
-            report_examples += train_batch_size 
+            report_examples += padded_source.shape[0]  
 
             # calculate perplexity by averaging the loss over all words 
             total_target_words += sum([len(padded_target[i][padded_target[i] != 0])-1 for i in range(padded_target.shape[0])])
@@ -83,7 +72,7 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
             # evaluate and save the model with the best val loss
             if train_i % save_every == 0:
         
-                val_loss, val_perplexity = validate(model, val_data_source, val_data_target, val_batch_size, vocab, device)
+                val_loss, val_perplexity = validate(model, val_loader, vocab, device)
                 val_perplexities.append(val_perplexity)
                 print('epoch {}, train iter {}, average val loss {}, val perplexity {}'.format(epoch+1, train_i, val_loss, val_perplexity))
                 print()
@@ -92,8 +81,8 @@ def train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, 
                     model.save(save_model)
 
                 model.train()
-                
-def validate(model, val_data_source, val_data_target, val_batch_size, vocab, device):
+
+def validate(model, val_loader, vocab, device):
     # performs validation by calculating perplexity of a batch given the current model 
     model.eval()
     total_val_loss = 0
@@ -101,18 +90,15 @@ def validate(model, val_data_source, val_data_target, val_batch_size, vocab, dev
     total_target_words = 0
 
     with torch.no_grad():
-        val_data = generate_batches(list(zip(val_data_source, val_data_target)), val_batch_size)
         
-        for val_batch in val_data:
-            val_source_batch, val_target_batch = val_batch
-
-            padded_source, padded_target = convert_tensors(val_source_batch, val_target_batch, vocab, device)
+        for val_batch in val_loader:
+            padded_source, padded_target = process_batch(val_batch)
 
             val_losses = - model(padded_source, padded_target)
             val_batch_loss = val_losses.sum()
             
             total_val_loss += val_batch_loss.item()
-            total_val_words += val_batch_size 
+            total_val_words += padded_source.shape[0] 
 
             total_target_words += sum([len(padded_target[i][padded_target[i] != 0])-1 for i in range(padded_target.shape[0])])
 
@@ -121,63 +107,28 @@ def validate(model, val_data_source, val_data_target, val_batch_size, vocab, dev
     
     return loss, perplexity
 
-def convert_tensors(source, target, vocab, device):
-    # converts list of lists of tokens into padded tokens
+def process_batch(batch):
+    # sort batch according to the lengths of sentences in the source 
 
-    # for out of vocabulary words, assign '<unk>'
-    word_ids = [[vocab.source_vocab.get(word, vocab.source_vocab['<unk>']) for word in s] for s in source]
-    padded_source = pad_sentences(word_ids)
+    padded_source, padded_target = batch
+    examples_batch = torch.cat((padded_source, padded_target), dim=1)
+    sorted_examples = sorted(examples_batch, key=lambda x: len(x[:padded_source.shape[1]+1][x[:padded_source.shape[1]+1]!=0]), reverse=True)
+    sorted_examples = torch.stack(sorted_examples, dim=0)
+   
+    padded_source = sorted_examples[:,:padded_source.shape[1]+1]
+    padded_target = sorted_examples[:,padded_source.shape[1]:]
 
-    word_ids_target = [[vocab.target_vocab.get(word, vocab.target_vocab['<unk>']) for word in s] for s in target]
-    padded_target = pad_sentences(word_ids_target)
-
-    padded_source = torch.tensor(padded_source, dtype=torch.long, device=device)
-    padded_target = torch.tensor(padded_target, dtype=torch.long, device=device)
-    
     return padded_source, padded_target
 
-def pad_sentences(sentences):
-    # pads given list of senteces
-    lengths = [len(s) for s in sentences]
-
-    padded_sents = []
-    for i in range(len(sentences)):
-        padded_sents.append(sentences[i] + [0] * (max(lengths) - lengths[i]))
-
-    return padded_sents
-
-def generate_batches(examples, batch_size):
-    # generates mini-batches of source and target senteces for training in decreasing order
-    
-    full_batches =[]
-    for i in range(int(np.ceil(len(examples)/batch_size))):
-
-        batch = []
-        for j in range(i * batch_size, (i+1) * batch_size):
-            
-            if j < len(examples) and len(examples[j][0]) > 0 and len(examples[j][1]) > 0: 
-                batch.append(examples[j])
-
-        sorted_examples = sorted(batch, key=lambda x: len(x[0]), reverse=True)
-        
-        source_batch = [x[0] for x in sorted_examples]
-        target_batch = [x[1] for x in sorted_examples]
-        
-        full_batches.append([source_batch, target_batch])
-    
-    return full_batches
-
-def convert_onnx(model, val_path, vocab):
+def convert_onnx(model, val_loader, vocab):
     # exports the pytorch model to onnx 
     # accepts source and target tensor with batch_size and padded_length of variable sizes 
-    val_data_source, val_data_target = read(val_path)
-    val_data = generate_batches(list(zip(val_data_source, val_data_target)), 1)
-
-    val_source_batch, val_target_batch = val_data[0] # only one example is needed
-    s, t = convert_tensors(val_source_batch, val_target_batch, vocab, device='cpu')
+    for val_batch in val_loader:
+        source, target = process_batch(val_batch)
+        break # only one example is needed 
 
     torch.onnx.export(model, 
-                    (s,t), 
+                    (source, target), 
                     "paraphraser.onnx", 
                     opset_version=11,
                     input_names = ['input'],  
@@ -218,10 +169,20 @@ def main(_):
         for param in model.parameters():
             param.data.uniform_(-0.1, 0.1)
 
+    train_data_source, train_data_target = read(train_path)
+    val_data_source, val_data_target = read(val_path)
+
+    train_dataset = SentenceDataset(train_data_source, train_data_target, vocab)
+    train_loader = torch.utils.data.DataLoader(train_dataset, train_batch_size, shuffle=True)
+
+    val_dataset = SentenceDataset(val_data_source, val_data_target, vocab)
+    val_loader = torch.utils.data.DataLoader(val_dataset, val_batch_size)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr)
+
     print('Started training... ')
-    train(model, vocab, train_path, val_path, train_batch_size, val_batch_size, embed_size, hidden_size, lr, epochs, save_model, save_every, display_every, device)
-    # convert best model to onnx 
-    convert_onnx(model.load(save_model, device), val_path, vocab) 
+    train(model, vocab, train_loader, val_loader, optimizer, embed_size, hidden_size, epochs, save_model, save_every, display_every, device)
+    convert_onnx(model.load(save_model, device), val_loader, vocab) 
 if __name__ == '__main__':
     app.run(main)
 
