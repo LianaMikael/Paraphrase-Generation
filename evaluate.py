@@ -51,7 +51,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
                 print('target:', ' '.join(target_sentence[1:-1]))
                 print()
 
-            f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
+            f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence[1:-1]), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
     
     print('Results saved into ', output_file)
     f.close()
@@ -110,8 +110,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
         if not greedy_end:
             # perform greedy decoding by selecting the word with the highest score at each step 
             h_scores_exp = torch.exp(h_scores)
-            greedy_id = torch.argmax(h_scores_exp)
-            
+            greedy_id = torch.argmax(h_scores_exp) % len(model.vocab.target_vocab)
             greedy_word = target_id_word.get(greedy_id.item(), '<unk>')
 
             if greedy_word != '</s>': 
@@ -204,8 +203,8 @@ def main(_):
 
     print('Decoding completed.')
 
-    wer_score_bs, BLEU_score_bs = evaluate_word_level(targets[1:-1], beam_search_sents)
-    wer_score_greey, BLEU_score_greedy = evaluate_word_level(targets[1:-1], greedy_sents)
+    wer_score_bs, BLEU_score_bs = evaluate_word_level(targets, beam_search_sents)
+    wer_score_greey, BLEU_score_greedy = evaluate_word_level(targets, greedy_sents)
 
     print('Word Error Rate with beam search decoding: {}, with greedy decoding {}'.format(wer_score_bs, wer_score_greey))
     print('Corpus level BLEU score with beam search decoding: {}, with greeedy decoding: {} '.format(BLEU_score_bs, BLEU_score_greedy))
