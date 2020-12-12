@@ -36,9 +36,10 @@ There are three main ways to generate output:
 
 ## How To Use
 
-Install required packages
+Create a conda environment and install required packages
 ```
-pip3 install -r requirements.txt
+conda env create -f env.yml
+conda activate paraphraser_env
 ```
 
 Collect data into csv files in the format: first column - source sentences, second columns - target (paraphrased) sentences.
