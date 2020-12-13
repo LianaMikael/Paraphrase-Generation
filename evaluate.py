@@ -17,6 +17,8 @@ flags.DEFINE_string('save_output', 'output.csv', 'Path to save output')
 flags.DEFINE_integer('beam_size', 10, 'Beam size')
 flags.DEFINE_integer('max_decode_time', 25, 'Maximum decoding time step')
 
+flags.mark_flag_as_required('load_model')
+
 def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device, show_each=True):
     # performs decoding 
     test_source, test_target = read(test_path)
@@ -39,6 +41,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
 
         if len(source_sentence) > 0:
             all_test_target.append(target_sentence)
+
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
 
             all_greedy_sents.append(greedy_hypothesis)
@@ -101,7 +104,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
         new_embed = torch.cat([target_embed, att], dim=-1)
 
         # only perform one decoder step 
-        dec_state, new_att = model.step(new_embed=new_embed, dec_state=dec_state_h, enc_hidden=enc_hidden_new, enc_hidden_proj=enc_hidden_att_new, enc_masks=None)
+        dec_state, new_att, _ = model.step(new_embed=new_embed, dec_state=dec_state_h, enc_hidden=enc_hidden_new, enc_hidden_proj=enc_hidden_att_new, enc_masks=None)
 
         probs = F.log_softmax(model.target_vocab_proj(new_att), dim=-1)
 
@@ -168,7 +171,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
     return greedy_hypothesis, all_hypotheses
 
 def evaluate_word_level(targets, predictions):
-    # evaluate results with corpus-level BLEU score and average word error rate 
+    # evaluate results with corpus-level BLEU score, average word error rate and Jaccard similarity 
 
     assert len(predictions) == len(targets)
 

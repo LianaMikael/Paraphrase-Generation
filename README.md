@@ -36,11 +36,11 @@ There are three main ways to generate output:
  
 Automatic evaluation can be separated into two clusters of methods: **word overlap-based metrics** and **embedding-based metrics**. 
 
-Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (Jaccard similarity, word error rate, BLUE score). While these methods are useful for ensuring that predictions are lexically similar, they fail to capture semantically similar sentences that do not necessarily of have common words. In addition, two sentences may have a high number of common words but very different meanings overall.   
+Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (Jaccard similarity, word error rate, BLUE score). While these methods are useful for ensuring that predictions are lexically similar, they fail to capture semantically similar sentences that do not necessarily have common words. In addition, two sentences may have a high number of common words but very different meanings overall.   
 
 Embedding-based metrics consider meanings of sentences by combining word embeddings (Word2Vec, Glove, etc) and compute a distance measure (cosine distance, Word Mover’s Distance) between embedding vectors of predicted and target sentences. These methods take into account words’ similarities in a word embedding space allowing to capture semantic similarities irrespective of common words. 
 
-Here, metrics from both categories are implemented. 
+Here metrics from both categories are implemented. 
 
 ## How To Use
 
@@ -69,7 +69,7 @@ python3 train.py --train_path train_data.csv --val_path val_data.csv --device cp
 
 Perform evaluation 
 ```
-python3 evaluate.py --test_path test_data.csv --device cpu
+python3 evaluate.py --test_path val_data.csv --device cpu
 ```
 
 ## References
