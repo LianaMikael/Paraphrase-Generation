@@ -4,6 +4,8 @@ This repository explores sequence-to-sequence paraphrase generation inspired by 
 
 The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional LSTM decoder and a global attention mechanism. I explore word-level encoding. Byte pair encoding can also be used. 
 
+This project also explores various automatic evaluation techniques to assess the quality of paraphrases in both how closely they carry the meanings of original sentences and how similar in wording they are to source sentences. 
+
 ## Architecture and Training Procedure
 
 For a source sentence from the training set, we look up word embeddings from the embeddings matrix, obtaining fixed-dimensional vectors. These embedding vectors are then fed into the bidirectional LSTM, producing hidden states and cell states for both the forward and backward LSTMs. We concatenate them as follows:
@@ -36,7 +38,7 @@ There are three main ways to generate output:
  
 Automatic evaluation can be separated into two clusters of methods: **word overlap-based metrics** and **embedding-based metrics**. 
 
-Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (Jaccard similarity, word error rate, BLUE score). While these methods are useful for ensuring that predictions are lexically similar, they fail to capture semantically similar sentences that do not necessarily have common words. In addition, two sentences may have a high number of common words but very different meanings overall.   
+Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (Jaccard similarity, word error rate, BLUE score). While these methods are useful for ensuring that predictions are lexically similar, they fail to capture semantically similar sentences that do not necessarily have common words. In addition, two sentences may have a high number of common words but very different meanings overall. This, however, can help to evaluate model's ability to generate diverse paraphrases by measuring the overlap in wording with source sentences. 
 
 Embedding-based metrics consider meanings of sentences by combining word embeddings (Word2Vec, Glove, etc) and compute a distance measure (cosine distance, Word Mover’s Distance) between embedding vectors of predicted and target sentences. These methods take into account words’ similarities in a word embedding space allowing to capture semantic similarities irrespective of common words. 
 
@@ -67,7 +69,7 @@ Perform training
 python3 train.py --train_path train_data.csv --val_path val_data.csv --device cpu
 ```
 
-Perform evaluation 
+Download GloVe embeddings [here](https://nlp.stanford.edu/projects/glove/) and perform evaluation
 ```
 python3 evaluate.py --test_path val_data.csv --device cpu
 ```

@@ -5,10 +5,8 @@ import numpy as np
 from model import Paraphraser
 from construct_vocabulary import read
 from train import train
-
-from jiwer import wer 
-import nltk 
 from collections import namedtuple
+from evaluator import Evaluator
 
 FLAGS = flags.FLAGS
 
@@ -30,6 +28,7 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
     all_greedy_sents = []
     all_beam_search_sents = []
     all_test_target = []
+    all_sources = []
 
     f = open(output_file, 'w+')
     f.write('{},{},{},{}\n'.format('source sentence', 'target sentence', 'greedy hypothesis', 'beam search hypothesis'))
@@ -40,7 +39,8 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
         target_sentence = test_target[i]
 
         if len(source_sentence) > 0:
-            all_test_target.append(target_sentence)
+            all_test_target.append(target_sentence[1:-1])
+            all_sources.append(source_sentence)
 
             greedy_hypothesis, all_hypotheses = get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device)
 
@@ -53,13 +53,14 @@ def decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, de
                 print('beam search:', ' '.join(all_hypotheses[0][0]))
                 print('target:', ' '.join(target_sentence[1:-1]))
                 print()
-
+        
             f.write('{},{},{},{}\n'.format(' '.join(source_sentence), ' '.join(target_sentence[1:-1]), ' '.join(greedy_hypothesis), ' '.join(all_hypotheses[0][0])))
-    
+        if i == 100:
+            break 
     print('Results saved into ', output_file)
     f.close()
         
-    return all_test_target, all_greedy_sents, all_beam_search_sents
+    return all_sources, all_test_target, all_greedy_sents, all_beam_search_sents
 
 
 def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device):
@@ -104,7 +105,7 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
         new_embed = torch.cat([target_embed, att], dim=-1)
 
         # only perform one decoder step 
-        dec_state, new_att, _ = model.step(new_embed=new_embed, dec_state=dec_state_h, enc_hidden=enc_hidden_new, enc_hidden_proj=enc_hidden_att_new, enc_masks=None)
+        dec_state, new_att = model.step(new_embed=new_embed, dec_state=dec_state_h, enc_hidden=enc_hidden_new, enc_hidden_proj=enc_hidden_att_new, enc_masks=None)
 
         probs = F.log_softmax(model.target_vocab_proj(new_att), dim=-1)
 
@@ -170,24 +171,6 @@ def get_hypothesis(source_sentence, model, beam_size, max_t, hidden_size, device
     
     return greedy_hypothesis, all_hypotheses
 
-def evaluate_word_level(targets, predictions):
-    # evaluate results with corpus-level BLEU score, average word error rate and Jaccard similarity 
-
-    assert len(predictions) == len(targets)
-
-    wers = []
-    clean_targets = []
-    clean_predictions = []
-    for pred, target in zip(predictions, targets):
-        if len(target) > 0 and len(pred) > 0: 
-            wers.append(wer(target, pred))
-            clean_targets.append(target)
-            clean_predictions.append(pred)
-            
-    BLEU = nltk.translate.bleu_score.corpus_bleu(clean_targets, clean_predictions)
-
-    return np.mean(wers), BLEU
-
 def main(_):
     test_path = FLAGS.test_path
     device = FLAGS.device
@@ -202,15 +185,24 @@ def main(_):
     device = torch.device('cuda:0' if FLAGS.device=='cuda' else 'cpu')
 
     print('Started decoding...')
-    targets, greedy_sents, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device)
+    sources, targets, greedy_sents, beam_search_sents = decode(test_path, load_model, beam_size, max_t, hidden_size, output_file, device)
 
     print('Decoding completed.')
 
-    wer_score_bs, BLEU_score_bs = evaluate_word_level(targets, beam_search_sents)
-    wer_score_greey, BLEU_score_greedy = evaluate_word_level(targets, greedy_sents)
+    bs_evaluator = Evaluator(beam_search_sents, targets, WER=True, BLEU=True, glove_file='glove.6B.100d.txt')
+    gr_evaluator = Evaluator(greedy_sents, targets, WER=True, BLEU=True, glove_file='glove.6B.100d.txt')
 
-    print('Word Error Rate with beam search decoding: {}, with greedy decoding {}'.format(wer_score_bs, wer_score_greey))
-    print('Corpus level BLEU score with beam search decoding: {}, with greeedy decoding: {} '.format(BLEU_score_bs, BLEU_score_greedy))
+    print('Average Word Error Rate with beam search decoding: {}, with greedy decoding {}'.format(bs_evaluator.WER, gr_evaluator.WER))
+    print('Corpus level BLEU score with beam search decoding: {}, with greeedy decoding: {} '.format(bs_evaluator.BLEU, gr_evaluator.BLEU))
+    print('Cosine similairty with Glove with beam search decoding: {}, with greeedy decoding: {} '.format(bs_evaluator.embed_sim, gr_evaluator.embed_sim))
+    print()
+
+    bs_evaluator_sources = Evaluator(beam_search_sents, sources, WER=True, BLEU=True)
+    gr_evaluator_sources = Evaluator(greedy_sents, sources, WER=True, BLEU=True)
+
+    print('Evaluation of word overlap of source sentences and predictions:')
+    print('Average Word Error Rate with beam search decoding: {}, with greedy decoding {}'.format(bs_evaluator_sources.WER, gr_evaluator_sources.WER))
+    print('Corpus level BLEU score with beam search decoding: {}, with greeedy decoding: {} '.format(bs_evaluator_sources.BLEU, gr_evaluator_sources.BLEU))
 
 if __name__ == '__main__':
     app.run(main)
