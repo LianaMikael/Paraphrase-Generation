@@ -4,8 +4,6 @@ This repository explores sequence-to-sequence paraphrase generation inspired by 
 
 The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional LSTM decoder and a global attention mechanism. I explore word-level encoding. Byte pair encoding can also be used. 
 
-Automatic evaluation includes both word overlap-based methods as well as embedding-based metrics. Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (BLEU score, word error rate). Embedding-based metrics consider meanings of sentences by combining word embeddings (Word2Vec, Glove, etc) and compute a distance measure (cosine distance) between embedding vectors of predicted and target sentences.   
-
 ## Architecture and Training Procedure
 
 For a source sentence from the training set, we look up word embeddings from the embeddings matrix, obtaining fixed-dimensional vectors. These embedding vectors are then fed into the bidirectional LSTM, producing hidden states and cell states for both the forward and backward LSTMs. We concatenate them as follows:
@@ -29,10 +27,20 @@ This gives us the combined output vector for the current time step. To compute t
 
 ## Output Sentence Generation
 
-There are three main ways to generate output: 
-- **Random sampling** (not implemented here) 
+There are three main ways to generate output:  
 - **Greedy Decoding**: at each time step, select the word from the vocabulary with the highst score obtained by performing one decoder step, continue until the end token is reached or a pre-defined maximum number of steps is completed.  
 - **Beam Search**: at each time step, keep track of *k* (beam size) most probable hypotheses, for each hypothesis continue until the end token is reached, stop the process when a maximum number of steps is reached or a pre-defined minimum number of hypotheses is generated.  
+- **Random Sampling**: randomly choose an output sequence. This technique may be particulary useful for cases when we wish to have a variety of outputs for one input, for example for seq2seq systems such as dialogues (not implemented here).
+
+## Evaluation
+ 
+Automatic evaluation can be separated into two clusters of methods: **word overlap-based metrics** and **embedding-based metrics**. 
+
+Word overlap-based metrics focus on evaluating word overlap between predicted sentences and target sentences (Jaccard similarity, word error rate, BLUE score). While these methods are useful for ensuring that predictions are lexically similar, they fail to capture semantically similar sentences that do not necessarily of have common words. In addition, two sentences may have a high number of common words but very different meanings overall.   
+
+Embedding-based metrics consider meanings of sentences by combining word embeddings (Word2Vec, Glove, etc) and compute a distance measure (cosine distance, Word Mover’s Distance) between embedding vectors of predicted and target sentences. These methods take into account words’ similarities in a word embedding space allowing to capture semantic similarities irrespective of common words. 
+
+Here, metrics from both categories are implemented. 
 
 ## How To Use
 
@@ -69,3 +77,5 @@ python3 evaluate.py --test_path test_data.csv --device cpu
 - Graham Neubig, Neural Machine Translation and Sequence-to-sequence Models: A Tutorial. Carnegie Mellon University (2017). [Graham Neubig](https://arxiv.org/pdf/1703.01619.pdf)
 
 - Stanford CS224n Natural Language Processing with Deep Learning [CS224n](http://web.stanford.edu/class/cs224n/)
+
+- Adrien Sieg, Text Similarities: Estimate the degree of similarity between two texts. [Adrien Sieg] (https://medium.com/@adriensieg/text-similarities-da019229c894)
