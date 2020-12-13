@@ -78,4 +78,4 @@ python3 evaluate.py --test_path test_data.csv --device cpu
 
 - Stanford CS224n Natural Language Processing with Deep Learning [CS224n](http://web.stanford.edu/class/cs224n/)
 
-- Adrien Sieg, Text Similarities: Estimate the degree of similarity between two texts. [Adrien Sieg] (https://medium.com/@adriensieg/text-similarities-da019229c894)
+- Adrien Sieg, Text Similarities: Estimate the degree of similarity between two texts. [Adrien Sieg](https://medium.com/@adriensieg/text-similarities-da019229c894)
