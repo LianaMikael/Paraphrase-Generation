@@ -4,7 +4,7 @@ This repository explores sequence-to-sequence paraphrase generation inspired by 
 
 The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirectional LSTM decoder and a global attention mechanism. I explore word-level encoding. Byte pair encoding can also be used. 
 
-This project also explores various automatic evaluation techniques to assess the quality of paraphrases in both how closely they carry the meanings of original sentences and how similar in wording they are to source sentences. 
+This project also explores various automatic evaluation techniques to assess the quality of paraphrases in both how closely they carry the meanings of original sentences and how similar they are in wording. 
 
 ## Architecture and Training Procedure
 
@@ -52,8 +52,8 @@ conda env create -f env.yml
 conda activate paraphraser_env
 ```
 
-Collect data into csv files in the format: first column - source sentences, second columns - target (paraphrased) sentences.
-Datasets used include PPDB (http://paraphrase.org/#/download) and Quora Question Pairs (https://www.quora.com/q/quoradata/First-Quora-Dataset-Release-Question-Pairs).
+Collect data into csv files in the format: first column - source sentences, second column - target (paraphrased) sentences.
+Datasets used include [PPDB](http://paraphrase.org/#/download), [Quora Question Pairs](https://www.quora.com/q/quoradata/First-Quora-Dataset-Release-Question-Pairs) and [LanguageNet](https://languagenet.github.io/). 
 
 ```
 python3 process_data.py
