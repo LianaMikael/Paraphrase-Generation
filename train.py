@@ -10,12 +10,12 @@ import onnx
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('train_path', 'train_data.csv', 'Train file path (csv)')
-flags.DEFINE_string('val_path', 'val_data.csv', 'Validation file path (csv)')
+flags.DEFINE_string('train_path', 'train_data_all.csv', 'Train file path (csv)')
+flags.DEFINE_string('val_path', 'val_data_all.csv', 'Validation file path (csv)')
 flags.DEFINE_integer('train_batch_size', 256, 'Train batch size')
 flags.DEFINE_integer('val_batch_size', 128, 'Validation batch size')
 flags.DEFINE_string('save_model', 'model.bin', 'Model save path')
-flags.DEFINE_string('load_model', 'model.bin', 'Model load path')
+flags.DEFINE_string('load_model', None, 'Model load path')
 flags.DEFINE_string('device', 'cuda', 'Device')
 
 flags.DEFINE_integer('embed_size', 512, 'embeddings dimentionality')
@@ -115,7 +115,7 @@ def process_batch(batch):
     sorted_examples = sorted(examples_batch, key=lambda x: len(x[:padded_source.shape[1]+1][x[:padded_source.shape[1]+1]!=0]), reverse=True)
     sorted_examples = torch.stack(sorted_examples, dim=0)
    
-    padded_source = sorted_examples[:,:padded_source.shape[1]+1]
+    padded_source = sorted_examples[:,:padded_source.shape[1]]
     padded_target = sorted_examples[:,padded_source.shape[1]:]
 
     return padded_source, padded_target

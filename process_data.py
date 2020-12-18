@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import re 
 
 def collect_ppdb():
     sources = []
@@ -43,7 +44,9 @@ def collect_language_net():
 
 def save_to_file(out_file, sources, targets):
     for i in range(len(sources)):
-        out_file.write('{},{}\n'.format(sources[i], targets[i]))
+        source_string = re.sub(r'\W+ ', '', sources[i])
+        target_string = re.sub(r'\W+ ', '', targets[i])
+        out_file.write('{},{}\n'.format(source_string, target_string))
     out_file.close()
 
 if __name__ == '__main__':
