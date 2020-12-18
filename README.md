@@ -61,17 +61,17 @@ python3 process_data.py
 
 Create training vocabulary and save it into a json file
 ```
-python3 construct_vocabulary.py --data_path train_data.csv --vocab_path vocab.json
+python3 construct_vocabulary.py --data_path train_data_all.csv --vocab_path vocab.json
 ```
 
 Perform training
 ```
-python3 train.py --train_path train_data.csv --val_path val_data.csv --device cpu
+python3 train.py --train_path train_data_all.csv --val_path val_data_all.csv --device cpu
 ```
 
 Download GloVe embeddings [here](https://nlp.stanford.edu/projects/glove/) and perform evaluation
 ```
-python3 evaluate.py --test_path val_data.csv --device cpu
+python3 evaluate.py --test_path test_data_all.csv --device cpu
 ```
 
 ## References

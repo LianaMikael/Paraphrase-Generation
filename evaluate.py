@@ -10,7 +10,7 @@ from evaluator import Evaluator
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('test_path', 'val_data.csv', 'Test file path (csv)')
+flags.DEFINE_string('test_path', 'test_data_all.csv', 'Test file path (csv)')
 flags.DEFINE_string('save_output', 'output.csv', 'Path to save output')
 flags.DEFINE_integer('beam_size', 10, 'Beam size')
 flags.DEFINE_integer('max_decode_time', 25, 'Maximum decoding time step')
