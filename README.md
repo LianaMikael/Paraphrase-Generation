@@ -6,6 +6,8 @@ The end-to-end architecture consists of a bidirectional LSTM encoder, a unidirec
 
 This project also explores various automatic evaluation techniques to assess the quality of paraphrases in both how closely they carry the meanings of original sentences and how similar they are in wording. 
 
+Note that due to large number of training parameters, the model trains for a long time on a single GPU. 
+
 ## Architecture and Training Procedure
 
 For a source sentence from the training set, we look up word embeddings from the embeddings matrix, obtaining fixed-dimensional vectors. These embedding vectors are then fed into the bidirectional LSTM, producing hidden states and cell states for both the forward and backward LSTMs. We concatenate them as follows:
@@ -66,12 +68,12 @@ python3 construct_vocabulary.py --data_path train_data_all.csv --vocab_path voca
 
 Perform training
 ```
-python3 train.py --train_path train_data_all.csv --val_path val_data_all.csv --device cpu
+python3 train.py --train_path train_data_all.csv --val_path val_data_all.csv --device cuda
 ```
 
 Download GloVe embeddings [here](https://nlp.stanford.edu/projects/glove/) and perform evaluation
 ```
-python3 evaluate.py --test_path test_data_all.csv --device cpu
+python3 evaluate.py --test_path test_data_all.csv --device cuda
 ```
 
 ## References
