@@ -1,38 +1,38 @@
 import torch 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 class SentenceDataset(Dataset):
-    ''' Dataset for constructing batches of source and target tensors '''
+    ''' Dataset for constructing source and target tensors '''
 
-    def __init__(self, source_sentences, target_sentences, vocab):
+    def __init__(self, source_sentences, target_sentences, vocab, max_tokens=50):
         # source: list of lists of tokens
         # target: list of lists of tokens 
 
-        self.source = self.convert_to_tensor(source_sentences, vocab.source_vocab)
-        self.target = self.convert_to_tensor(target_sentences, vocab.target_vocab)
-        assert self.source.shape[0] == self.target.shape[0]
+        assert len(source_sentences) == len(target_sentences)
+        self.source_sentences = source_sentences
+        self.target_sentences = target_sentences
+        self.max_tokens = max_tokens
+        self.vocab = vocab
 
     def __len__(self):
-        return self.target.shape[0]
+        return len(self.source_sentences)
 
     def __getitem__(self, idx):
-        return self.source[idx], self.target[idx]
+        source = self.convert_to_tensor(self.source_sentences[idx], self.vocab.source_vocab)
+        target = self.convert_to_tensor(self.target_sentences[idx], self.vocab.target_vocab)
+        return source, target
 
-    def convert_to_tensor(self, tokens_list, tokens_vocab):
-        # converts list of lists of tokens into padded tokens using the corresponding vocabulary 
+    def convert_to_tensor(self, sentence, tokens_vocab):
+        # converts a list of tokens into padded tokens using the corresponding vocabulary 
         # for out of vocabulary words, assigns '<unk>'
 
-        word_ids = [[tokens_vocab.get(word, tokens_vocab['<unk>']) for word in s] for s in tokens_list]
+        word_ids = [tokens_vocab.get(word, tokens_vocab['<unk>']) for word in sentence]
         padded_ids = self.pad_sentences(word_ids)
         return torch.tensor(padded_ids, dtype=torch.long)
 
-    @staticmethod
-    def pad_sentences(sentences):
+    def pad_sentences(self, sentence):
         # pads given list of senteces
-        
-        lengths = [len(s) for s in sentences]
-        padded_sents = []
-        for i in range(len(sentences)):
-            padded_sents.append(sentences[i] + [0] * (max(lengths) - lengths[i]))
-
-        return padded_sents
+        assert len(sentence) > 0
+        if len(sentence) < self.max_tokens:
+            return sentence + [0] * (self.max_tokens - len(sentence))
+        return sentence[:self.max_tokens]
