@@ -60,7 +60,7 @@ def train(model, vocab, train_loader, val_loader, optimizer, embed_size, hidden_
             report_examples += padded_source.shape[0]  
 
             # calculate perplexity by averaging the loss over all words 
-            total_target_words += sum([len(padded_target[i][padded_target[i] != 0])-1 for i in range(padded_target.shape[0])])
+            total_target_words += sum_target_words(padded_target)
             train_perplexity = np.exp(report_loss/total_target_words)
 
             # report training statistics  
@@ -100,12 +100,16 @@ def validate(model, val_loader, vocab, device):
             total_val_loss += val_batch_loss.item()
             total_val_words += padded_source.shape[0] 
 
-            total_target_words += sum([len(padded_target[i][padded_target[i] != 0])-1 for i in range(padded_target.shape[0])])
+            total_target_words += sum_target_words(padded_target)
 
         loss = total_val_loss / total_val_words
         perplexity = np.exp(total_val_loss / total_target_words)
     
     return loss, perplexity
+
+def sum_target_words(padded_target):
+    # calculates the sum over non-zero tokens excluding leading start token 
+    return sum([len(padded_target[i][padded_target[i] != 0])-1 for i in range(padded_target.shape[0])])
 
 def process_batch(batch):
     # sort batch according to the lengths of sentences in the source 
@@ -117,7 +121,6 @@ def process_batch(batch):
    
     padded_source = sorted_examples[:,:padded_source.shape[1]]
     padded_target = sorted_examples[:,padded_source.shape[1]:]
-
     return padded_source, padded_target
 
 def convert_onnx(model, val_loader, vocab):
@@ -165,9 +168,12 @@ def main(_):
 
     else:
         model = Paraphraser(embed_size, hidden_size, vocab, device)
-         # uniformly initialize the parameters
-        for param in model.parameters():
-            param.data.uniform_(-0.1, 0.1)
+        # initialize the parameters with constant or xavier functions
+        for name, param in model.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0.0)
+            elif 'weight' in name:
+                nn.init.xavier_normal_(param)
 
     train_data_source, train_data_target = read(train_path)
     val_data_source, val_data_target = read(val_path)
