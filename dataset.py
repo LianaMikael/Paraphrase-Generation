@@ -4,14 +4,14 @@ from torch.utils.data import Dataset
 class SentenceDataset(Dataset):
     ''' Dataset for constructing source and target tensors '''
 
-    def __init__(self, source_sentences, target_sentences, vocab, max_tokens=50):
-        # source: list of lists of tokens
-        # target: list of lists of tokens 
+    def __init__(self, source_sentences, target_sentences, vocab, num_tokens=50):
+        # source_sentences: list of lists of tokens
+        # target_sentences: list of lists of tokens 
 
         assert len(source_sentences) == len(target_sentences)
         self.source_sentences = source_sentences
         self.target_sentences = target_sentences
-        self.max_tokens = max_tokens
+        self.num_tokens = num_tokens
         self.vocab = vocab
 
     def __len__(self):
@@ -31,8 +31,8 @@ class SentenceDataset(Dataset):
         return torch.tensor(padded_ids, dtype=torch.long)
 
     def pad_sentences(self, sentence):
-        # pads given list of senteces
+        # pads a given single sentence
         assert len(sentence) > 0
-        if len(sentence) < self.max_tokens:
-            return sentence + [0] * (self.max_tokens - len(sentence))
-        return sentence[:self.max_tokens]
+        if len(sentence) < self.num_tokens:
+            return sentence + [0] * (self.num_tokens - len(sentence))
+        return sentence[:self.num_tokens]
