@@ -76,6 +76,8 @@ Download GloVe embeddings [here](https://nlp.stanford.edu/projects/glove/) and p
 python3 evaluate.py --test_path test_data_all.csv --device cuda
 ```
 
+Once you have a trained model, you can perform inference as shown in **Inference.ipynb** notebook. 
+
 ## References
 
 - Graham Neubig, Neural Machine Translation and Sequence-to-sequence Models: A Tutorial. Carnegie Mellon University (2017). [Graham Neubig](https://arxiv.org/pdf/1703.01619.pdf)
